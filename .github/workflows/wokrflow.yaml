@@ -1,0 +1,50 @@
+name: Deploy to ECS
+
+on:
+  # pushでデプロイ
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # ユーザー名変数にしておく
+      DEVELOPER_NAME: test-developer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      
+      # このリポジトリをビルドしてECRにプッシュ
+      - name: Build and push
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/devenv-${{ env.DEVELOPER_NAME }}-ecr:${{ github.sha }}
+        run: |
+          docker build -t $IMAGE ./app
+          docker tag $IMAGE ${IMAGE%:*}:latest
+          docker push $IMAGE
+          docker push ${IMAGE%:*}:latest
+
+      # タスク定義をECSに反映させる
+      - uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: task-def
+        with:
+          task-definition: task-definition.json
+          container-name: app
+          image: ${{ steps.ecr.outputs.registry }}/devenv-${{ env.DEVELOPER_NAME }}-ecr:${{ github.sha }}
+
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: devenv-${{ env.DEVELOPER_NAME }}-service
+          cluster: devenv-cluster
+          wait-for-service-stability: true

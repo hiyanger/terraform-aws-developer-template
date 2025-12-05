@@ -1,0 +1,35 @@
+{
+  "family": "devenv-test-developer-td",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "networkMode": "awsvpc",
+  "taskRoleArn": "arn:aws:iam::<アカウントID>:role/devenv-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::<アカウントID>:role/devenv-ecs-task-role",
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "<アカウントID>.dkr.ecr.ap-northeast-1.amazonaws.com/devenv-<ユーザー名>-ecr:latest",
+      "cpu": 0,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/devenv-<ユーザー名>-log",
+          "awslogs-region": "ap-northeast-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+
+
